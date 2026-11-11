@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pibu App Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* Pibu (피부 = "skin"). Layout: one phone column, top bar, scrolling screen, bottom tab bar. */
+:root{
+  --app-name:"Pibu";
+  --bg:#F2F5F3;          /* porcelain, slightly green */
+  --surface:#FFFFFF;
+  --ink:#17202D;
+  --muted:#5B6574;
+  --line:#DCE3E0;
+  --cica:#1E7A62;        /* centella / cica green */
+  --cica-ink:#0F5443;
+  --cica-soft:#DDEFE7;
+  --blush:#F7D6DE;
+  --warn:#9A5B0E;
+  --warn-soft:#FBEBD5;
+  --bad:#A33A3A;
+  --display:"Gowun Batang", "Noto Serif KR", Georgia, serif;
+  --body:"IBM Plex Sans KR", "Noto Sans JP", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,[tabindex]:focus-visible,input:focus-visible{outline:2px solid var(--cica);outline-offset:2px}
+@media (min-width:640px){ body:not(.framed){background:#DCE4E0} body:not(.framed) .app{border-radius:28px;box-shadow:0 30px 80px -30px rgba(23,32,45,.35);height:calc(100% - 48px);margin-top:24px} }
+
+.app{position:relative;height:100%;max-width:440px;margin:0 auto;background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+
+/* fake phone status bar, only inside the presentation frame */
+.status{display:none;height:44px;padding:0 26px;align-items:center;justify-content:space-between;font-size:14px;font-weight:600;flex:none}
+.framed .status{display:flex}
+.status .icons{display:flex;gap:6px;align-items:center}
+.status svg{display:block}
+
+.top{display:flex;align-items:center;justify-content:space-between;padding:10px 20px 6px;flex:none;min-height:52px}
+.logo{font-family:var(--display);font-size:24px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:baseline;gap:6px;background:none;border:0;padding:0}
+.logo small{font-family:var(--body);font-size:12px;color:var(--muted);font-weight:500}
+.lang-btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;font-size:13px}
+
+.screen{flex:1;overflow-y:auto;overflow-x:hidden;padding:6px 20px 24px;scroll-behavior:smooth}
+.screen > *{animation:in .35s ease both}
+@keyframes in{from{opacity:.0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+h1,h2{font-family:var(--display);font-weight:700;letter-spacing:-.015em;text-wrap:balance;margin:0}
+h1{font-size:30px;line-height:1.15}
+h2{font-size:22px;line-height:1.2}
+p{margin:0}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.stack{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;gap:10px;align-items:center}
+.spacer{flex:1}
+
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:14px;padding:15px 18px;font-weight:600;font-size:16px;background:var(--ink);color:#fff;transition:transform .12s}
+.btn:active{transform:scale(.98)}
+.btn.green{background:var(--cica)}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.text{background:none;color:var(--muted);padding:10px;font-weight:500;font-size:14px}
+.btn[disabled]{opacity:.35;cursor:default}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font-size:14px}
+.chip[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.chip.off{opacity:.45}
+.tag{display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:2px 7px;font-size:12px;font-weight:600}
+.tag.green{background:var(--cica-soft);color:var(--cica-ink)}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}
+.tag.ad{border:1px solid var(--ink);color:var(--ink);padding:1px 6px}
+.tag.ai{background:#E9ECF3;color:#33415C}
+
+/* welcome */
+.hero-art{height:230px;margin:6px -20px 18px;position:relative;overflow:hidden}
+.hero-art canvas{width:100%;height:100%;display:block}
+.langs{display:flex;flex-wrap:wrap;gap:8px}
+
+/* consent */
+.consent-row{display:flex;gap:14px;align-items:flex-start;padding:14px 0;border-top:1px solid var(--line)}
+.consent-row:first-of-type{border-top:0}
+.switch{flex:none;width:50px;height:30px;border-radius:999px;background:#C9D1CE;border:0;position:relative;transition:background .2s}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.switch[aria-checked="true"]{background:var(--cica)}
+.switch[aria-checked="true"]::after{transform:translateX(20px)}
+.notice{display:flex;gap:10px;background:#E9ECF3;border-radius:14px;padding:12px 14px;font-size:13px;color:#33415C}
+
+/* photo */
+.face-wrap{position:relative;aspect-ratio:1/1.08;border-radius:24px;overflow:hidden;background:linear-gradient(160deg,#E7EEEA,#D3DFD9)}
+.face-wrap svg{position:absolute;inset:0;width:100%;height:100%}
+.face-wrap.blurry svg.face{filter:blur(6px) brightness(.55)}
+.scanline{position:absolute;left:0;right:0;height:3px;background:var(--cica);box-shadow:0 0 18px 4px rgba(30,122,98,.55);top:0;animation:scan 1.6s ease-in-out infinite alternate}
+@keyframes scan{to{top:calc(100% - 3px)}}
+.dots circle{opacity:0;animation:pop .4s ease forwards}
+@keyframes pop{to{opacity:1}}
+.zone{position:absolute;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 2px rgba(30,122,98,.7);opacity:0;animation:pop .5s ease forwards}
+.zone-label{position:absolute;background:#fff;border-radius:8px;padding:3px 8px;font-size:12px;font-weight:600;white-space:nowrap;opacity:0;animation:pop .5s ease forwards;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.result-list{display:flex;flex-direction:column;gap:8px}
+.result-item{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.meter{flex:none;width:96px;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--cica);border-radius:3px}
+
+/* quiz */
+.progress{display:flex;gap:6px;margin:4px 0 18px}
+.progress i{flex:1;height:4px;border-radius:2px;background:var(--line)}
+.progress i.on{background:var(--cica)}
+.options{display:flex;flex-direction:column;gap:10px}
+.option{display:flex;align-items:center;gap:12px;text-align:left;width:100%;background:var(--surface);border:1.5px solid var(--line);border-radius:16px;padding:14px 16px;font-size:15px;transition:border-color .15s, background .15s}
+.option .em{width:36px;height:36px;border-radius:10px;background:var(--bg);display:grid;place-items:center;flex:none}
+.option[aria-pressed="true"]{border-color:var(--cica);background:var(--cica-soft)}
+.option b{display:block;font-weight:600}
+.option span.sub{display:block;font-size:13px;color:var(--muted)}
+
+/* analyzing */
+.analyzing{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;text-align:center;min-height:70%}
+.orbit{width:120px;height:120px;position:relative}
+.orbit i{position:absolute;inset:0;border-radius:50%;border:2px solid var(--cica);opacity:.0;animation:ripple 1.8s ease-out infinite}
+.orbit i:nth-child(2){animation-delay:.6s}.orbit i:nth-child(3){animation-delay:1.2s}
+@keyframes ripple{from{transform:scale(.3);opacity:.9}to{transform:scale(1);opacity:0}}
+.steps-log{font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:6px;min-height:84px}
+.steps-log div{animation:in .3s ease both}
+
+/* routine */
+.profile-card{background:var(--ink);color:#fff;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:10px}
+.profile-card .tags{display:flex;flex-wrap:wrap;gap:6px}
+.profile-card .tag{background:rgba(255,255,255,.12);color:#fff}
+.tabs{display:flex;background:#E4EAE7;border-radius:12px;padding:4px}
+.tabs button{flex:1;border:0;background:none;border-radius:9px;padding:9px;font-weight:600;font-size:14px;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.step{display:flex;gap:12px;align-items:flex-start}
+.step-num{flex:none;width:26px;height:26px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-size:13px;font-weight:600;color:var(--muted);margin-top:14px;background:var(--bg)}
+.product{flex:1;display:flex;flex-direction:column;gap:8px}
+.product-top{display:flex;gap:12px;align-items:center}
+.bottle{flex:none;width:44px;height:58px}
+.pname{font-weight:600;line-height:1.25}
+.pmeta{font-size:13px;color:var(--muted)}
+.price{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.why{border:0;background:none;padding:0;color:var(--cica-ink);font-size:13px;font-weight:600;text-align:left}
+.why-box{background:var(--bg);border-radius:12px;padding:10px 12px;font-size:13px;display:flex;flex-direction:column;gap:6px}
+.total{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-radius:16px;background:var(--cica-soft);color:var(--cica-ink);font-weight:600}
+.aisle{display:inline-flex;gap:4px;align-items:center;font-size:12px;color:var(--muted)}
+
+/* label scan */
+.label-card{position:relative;background:#FBFAF7;border:1px solid #E6E1D6;border-radius:18px;padding:18px 18px 16px;overflow:hidden;font-family:"IBM Plex Sans KR",sans-serif}
+.label-card .kname{font-family:var(--display);font-size:20px;font-weight:700}
+.label-card .ing{font-size:13px;line-height:1.7;color:#3D3A33}
+.label-card .scanline{animation-duration:1.1s}
+.ing-list{display:flex;flex-direction:column}
+.ing-row{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--line);animation:in .3s ease both}
+.ing-row:first-child{border-top:0}
+.ing-row .ko{font-size:12px;color:var(--muted)}
+.ing-row .mark{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700;margin-top:2px}
+.mark.ok{background:var(--cica-soft);color:var(--cica-ink)}
+.mark.warn{background:var(--warn-soft);color:var(--warn)}
+.mark.neutral{background:#ECEFEE;color:var(--muted)}
+.verdict{border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.verdict.warn{background:var(--warn-soft);color:#5E3906}
+.verdict.ok{background:var(--cica-soft);color:var(--cica-ink)}
+
+/* chat */
+.chat{display:flex;flex-direction:column;gap:10px;padding-bottom:8px}
+.msg{max-width:86%;padding:10px 14px;border-radius:18px;font-size:15px;animation:in .25s ease both}
+.msg.me{align-self:flex-end;background:var(--ink);color:#fff;border-bottom-right-radius:6px}
+.msg.ai{align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-bottom-left-radius:6px;display:flex;flex-direction:column;gap:8px}
+.msg .src{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:6px}
+.typing{display:inline-flex;gap:4px;padding:4px 2px}
+.typing i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:blink 1s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes blink{0%,100%{opacity:.25}50%{opacity:1}}
+.suggest{display:flex;gap:8px;overflow-x:auto;padding:4px 0 2px;scrollbar-width:none}
+.suggest .chip{white-space:nowrap;flex:none}
+.composer{flex:none;display:flex;gap:8px;padding:10px 16px;border-top:1px solid var(--line);background:var(--bg)}
+.composer input{flex:1;border:1px solid var(--line);border-radius:999px;padding:11px 16px;font:inherit;background:var(--surface);min-width:0}
+.composer button{border:0;border-radius:50%;width:44px;height:44px;background:var(--cica);color:#fff;display:grid;place-items:center;flex:none}
+
+/* check-in */
+.lock{border-radius:24px;padding:26px 18px;background:linear-gradient(170deg,#1E2A3A,#2D4A44);color:#fff;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:300px}
+.lock .clock{font-size:64px;font-weight:300;letter-spacing:-.03em;line-height:1;margin-top:10px;font-variant-numeric:tabular-nums}
+.notif{margin-top:auto;width:100%;background:rgba(255,255,255,.92);color:var(--ink);border-radius:18px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start;text-align:left;border:0;animation:drop .6s cubic-bezier(.2,.9,.3,1.2) .3s both}
+@keyframes drop{from{transform:translateY(-30px);opacity:0}to{transform:none;opacity:1}}
+.app-icon{flex:none;width:38px;height:38px;border-radius:10px;background:var(--cica);color:#fff;display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:20px}
+.faces{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.faces .option{flex-direction:column;text-align:center;padding:16px 8px;gap:6px}
+.loop{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:12px;text-align:center;color:var(--muted)}
+.loop div{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px 4px}
+.loop div.hl{border-color:var(--cica);color:var(--cica-ink);font-weight:600}
+
+/* me */
+.list{display:flex;flex-direction:column}
+.list .li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;border-top:1px solid var(--line)}
+.list .li:first-child{border-top:0}
+
+/* bottom nav */
+.nav{flex:none;display:flex;justify-content:space-around;border-top:1px solid var(--line);background:var(--surface);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+.nav button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:500;color:var(--muted);padding:6px 10px;border-radius:10px;min-width:64px}
+.nav button[aria-current="page"]{color:var(--cica-ink)}
+.nav svg{width:24px;height:24px}
+.framed .nav{padding-bottom:22px}
+
+/* toast + demo panel */
+.toast{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;z-index:30;max-width:86%;text-align:center;animation:in .25s ease both}
+.demo-panel{position:absolute;inset:auto 12px 12px 12px;background:var(--ink);color:#fff;border-radius:18px;padding:14px;z-index:40;display:none;flex-direction:column;gap:8px}
+.demo-panel.open{display:flex}
+.demo-panel .grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.demo-panel button{border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#fff;border-radius:10px;padding:8px;font-size:13px;text-align:left}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="status" aria-hidden="true">
+    <span>9:41</span>
+    <span class="icons">
+      <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" fill="currentColor"/><rect x="5" y="5" width="3" height="7" rx="1" fill="currentColor"/><rect x="10" y="2.5" width="3" height="9.5" rx="1" fill="currentColor"/><rect x="15" y="0" width="3" height="12" rx="1" fill="currentColor"/></svg>
+      <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 11.5 5.6 9a3.4 3.4 0 0 1 4.8 0L8 11.5Zm-4.2-4.3L2.3 5.7a8 8 0 0 1 11.4 0l-1.5 1.5a5.9 5.9 0 0 0-8.4 0ZM.8 4.2-.6 2.8a12.2 12.2 0 0 1 17.2 0l-1.4 1.4a10.2 10.2 0 0 0-14.4 0Z" fill="currentColor"/></svg>
+      <svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="17" height="8" rx="1.6" fill="currentColor"/><rect x="23.5" y="4" width="2" height="4" rx="1" fill="currentColor" opacity=".4"/></svg>
+    </span>
+  </div>
+  <header class="top" id="top"></header>
+  <main class="screen" id="screen" tabindex="-1"></main>
+  <div id="composerSlot"></div>
+  <nav class="nav" id="nav" aria-label="Main"></nav>
+  <div class="demo-panel" id="demoPanel" role="dialog" aria-label="Demo controls"></div>
+</div>
+
+<script>
+(() => {
+/* ============ copy (English + Japanese) ============ */
+const T = {
+  en:{
+    tagline:"Your K-beauty advisor, in your language.",
+    welcomeTitle:"Find the right skincare in Korea, in minutes.",
+    welcomeBody:"Answer a few questions, add a photo if you like, and get a routine you can buy in the store you're standing in.",
+    chooseLang:"Language", more:"+ 6 more", start:"Start", haveAccount:"I already have a routine",
+    consentTitle:"Your photo, your choice", consentBody:"A photo helps us see your skin. You can skip it and use the quiz only.",
+    c1:"Analyse my face photo", c1s:"Separate consent. Used once to read your skin, then deleted.",
+    c2:"Improve advice with my results", c2s:"Your “did it work?” answers, without your name or photo.",
+    c3:"Show me sponsored products", c3s:"Always labelled “Ad”. Never ranked above better matches.",
+    aiNotice:"This app uses AI. Results are suggestions, not medical advice.",
+    continue:"Continue", skipPhoto:"Skip photo, use quiz only",
+    photoTitle:"Add a photo", photoBody:"Face the window, no makeup, no filter.",
+    useDemo:"Use demo photo", useBlurry:"Try a dark photo", reading:"Reading your skin…",
+    tooDark:"This photo is too dark to read your skin.", tooDarkSub:"Move closer to a window and take it again. We would rather ask than guess.", retake:"Retake photo",
+    photoDone:"What we see", oil:"Oil in T-zone", redness:"Redness, cheeks", hydration:"Dryness", pores:"Visible pores",
+    photoDeleted:"Photo deleted from our servers", next:"Next",
+    q:"Question", of:"of",
+    q1:"By mid-afternoon, your skin feels…",
+    q1a:"Shiny all over", q1b:"Shiny T-zone, dry cheeks", q1c:"Tight or flaky", q1d:"Comfortable",
+    q2:"What would you like to fix?", q2s:"Pick up to three.",
+    concerns:{redness:"Redness",acne:"Breakouts",dryness:"Dryness",dullness:"Dullness",pores:"Pores"},
+    q3:"Does new skincare often sting or itch?", q3a:"Yes, often", q3b:"Sometimes", q3c:"Never",
+    q4:"Your budget for the whole routine", q4a:"Under ₩40,000", q4b:"₩40,000–80,000", q4c:"No limit",
+    q5:"How many steps do you want?", q5a:"3 steps", q5as:"Quick, for travel", q5b:"5 steps", q5bs:"The full K-beauty routine",
+    demoAnswers:"Fill demo answers", seeRoutine:"Build my routine",
+    an1:"Matching your photo and answers", an2:"Checking 2,400 products for fragrance and irritants", an3:"Finding them in this store", an4:"Ranking by “did it work?” results",
+    yourSkin:"Your skin", morning:"Morning", evening:"Evening",
+    whyThis:"Why this?", hide:"Hide", source:"Source: checked ingredient database",
+    total:"Total in store", aisle:"Aisle", saved:"Routine saved", save:"Save routine",
+    adWhy:"Sponsored. We show it because it matches your skin; a better match would be ranked first.",
+    scanTitle:"Scan a label", scanBody:"Point your camera at the back of any Korean product.", scanBtn:"Scan this label", scanning:"Translating…",
+    ingTitle:"Ingredients, in English", addRoutine:"Compare with my routine", rescan:"Scan another",
+    chatTitle:"Ask about your routine", chatHello:"Hi! I know your skin profile and routine. Ask me anything about the products.",
+    placeholder:"Ask a question…", aiLabel:"AI answer",
+    fallback:"In this prototype I can only answer the suggested questions. In the real app, every answer is checked against our ingredient database and shows its source.",
+    checkTitle:"3 weeks later", checkNotif:"Did your routine work? Tap to tell us in 10 seconds.", now:"now",
+    checkQ:"How does your skin feel compared with 3 weeks ago?", better:"Better", same:"Same", worse:"Worse",
+    checkDone:"Thanks. This answer is the most useful thing you can give us.", checkLoop1:"Your answer", checkLoop2:"Linked to skin profile", checkLoop3:"Better advice for skin like yours",
+    swapped:"We changed one step", swappedBody:"You said your cheeks still feel tight, so we swapped your toner for a more hydrating one.",
+    worseBody:"Stop using the newest product (the BHA toner). If redness lasts more than 3 days, see a pharmacist. We have changed your routine.",
+    meTitle:"You", meProfile:"Skin profile", mePrivacy:"Privacy", photoStatus:"Face photo", deleted:"Deleted", dataUse:"Results used to improve advice", on:"On", off:"Off",
+    deleteAll:"Delete all my data", meAds:"About ads", meAdsBody:"Brands can pay to be shown, and those products are labelled “Ad”. Ranking comes from how well products worked for people with skin like yours.",
+    simulate:"Simulate 3 weeks later", tabs:{routine:"Routine",scan:"Scan",chat:"Ask",me:"You"},
+    profileLine:(p)=>p, demoOnly:"Demo has English and 日本語 only.", deletedAll:"All your data was deleted."
+  },
+  ja:{
+    tagline:"あなたの言葉で話す、K-ビューティーのアドバイザー。",
+    welcomeTitle:"韓国で、自分に合うスキンケアを数分で。",
+    welcomeBody:"いくつかの質問に答えて、写真を追加すれば、今いるお店で買えるルーティンが見つかります。",
+    chooseLang:"言語", more:"+ ほか6言語", start:"はじめる", haveAccount:"ルーティンを持っている",
+    consentTitle:"写真を使うかは、あなたが決める", consentBody:"写真があると肌がよく見えます。質問だけでも使えます。",
+    c1:"顔写真を分析する", c1s:"個別の同意です。肌を一度読み取ったら削除します。",
+    c2:"結果をアドバイス改善に使う", c2s:"「効果があった？」の回答のみ。名前や写真は含みません。",
+    c3:"スポンサー商品を表示する", c3s:"必ず「広告」と表示。より合う商品より上には出しません。",
+    aiNotice:"このアプリはAIを使います。結果は提案であり、医療アドバイスではありません。",
+    continue:"次へ", skipPhoto:"写真なしで質問だけ",
+    photoTitle:"写真を追加", photoBody:"窓に向かって、メイクなし・フィルターなしで。",
+    useDemo:"デモ写真を使う", useBlurry:"暗い写真を試す", reading:"肌を読み取り中…",
+    tooDark:"写真が暗すぎて肌を読み取れません。", tooDarkSub:"窓に近づいて撮り直してください。推測するより、お願いします。", retake:"撮り直す",
+    photoDone:"わかったこと", oil:"Tゾーンの皮脂", redness:"頬の赤み", hydration:"乾燥", pores:"毛穴",
+    photoDeleted:"写真はサーバーから削除されました", next:"次へ",
+    q:"質問", of:"/",
+    q1:"午後になると、肌は…",
+    q1a:"全体がテカる", q1b:"Tゾーンはテカり、頬は乾燥", q1c:"つっぱる・粉をふく", q1d:"快適",
+    q2:"何を改善したいですか？", q2s:"3つまで選べます。",
+    concerns:{redness:"赤み",acne:"ニキビ",dryness:"乾燥",dullness:"くすみ",pores:"毛穴"},
+    q3:"新しいスキンケアでヒリヒリしますか？", q3a:"よくある", q3b:"ときどき", q3c:"ない",
+    q4:"ルーティン全体の予算", q4a:"₩40,000未満", q4b:"₩40,000〜80,000", q4c:"上限なし",
+    q5:"ステップ数は？", q5a:"3ステップ", q5as:"旅行向け、手早く", q5b:"5ステップ", q5bs:"本格的なK-ビューティー",
+    demoAnswers:"デモの回答を入れる", seeRoutine:"ルーティンを作る",
+    an1:"写真と回答を照合中", an2:"2,400商品の香料・刺激成分をチェック中", an3:"このお店の売り場を検索中", an4:"「効果があった」結果で並べ替え中",
+    yourSkin:"あなたの肌", morning:"朝", evening:"夜",
+    whyThis:"なぜこれ？", hide:"閉じる", source:"出典：確認済み成分データベース",
+    total:"店頭価格の合計", aisle:"売り場", saved:"ルーティンを保存しました", save:"ルーティンを保存",
+    adWhy:"広告です。肌に合うので表示しています。より合う商品があれば上に表示します。",
+    scanTitle:"ラベルをスキャン", scanBody:"韓国製品の裏面にカメラを向けてください。", scanBtn:"このラベルをスキャン", scanning:"翻訳中…",
+    ingTitle:"成分（日本語）", addRoutine:"ルーティンと比べる", rescan:"別のラベル",
+    chatTitle:"ルーティンについて質問", chatHello:"こんにちは！あなたの肌とルーティンを知っています。商品について何でも聞いてください。",
+    placeholder:"質問を入力…", aiLabel:"AIの回答",
+    fallback:"このプロトタイプでは、候補の質問にだけ答えられます。実際のアプリでは、すべての回答を成分データベースで確認し、出典を表示します。",
+    checkTitle:"3週間後", checkNotif:"ルーティンの効果はどうでしたか？10秒で教えてください。", now:"今",
+    checkQ:"3週間前と比べて、肌の調子は？", better:"良くなった", same:"変わらない", worse:"悪くなった",
+    checkDone:"ありがとうございます。この回答がいちばん役に立ちます。", checkLoop1:"あなたの回答", checkLoop2:"肌プロフィールと紐づけ", checkLoop3:"似た肌の人へのより良い提案",
+    swapped:"ステップを1つ変更しました", swappedBody:"頬がまだつっぱるとのことなので、より保湿力のある化粧水に替えました。",
+    worseBody:"いちばん新しい商品（BHA化粧水）の使用をやめてください。赤みが3日以上続く場合は薬剤師に相談してください。ルーティンを変更しました。",
+    meTitle:"マイページ", meProfile:"肌プロフィール", mePrivacy:"プライバシー", photoStatus:"顔写真", deleted:"削除済み", dataUse:"結果をアドバイス改善に使用", on:"オン", off:"オフ",
+    deleteAll:"すべてのデータを削除", meAds:"広告について", meAdsBody:"ブランドは表示のために支払うことができ、その商品には「広告」と表示されます。並び順は、似た肌の人にどれだけ効果があったかで決まります。",
+    simulate:"3週間後をシミュレート", tabs:{routine:"ルーティン",scan:"スキャン",chat:"質問",me:"マイ"},
+    profileLine:(p)=>p, demoOnly:"デモは English と日本語のみです。", deletedAll:"すべてのデータを削除しました。"
+  }
+};
+const t = k => (T[S.lang][k] ?? T.en[k]);
+
+/* ============ product catalog (fictional example brands) ============ */
+const P = {
+  cleanserGel:{brand:"Soonsoo", name:"Low-pH Gel Cleanser", ko:"순수 약산성 젤 클렌저", price:13000, aisle:"B2", color:"#CFE6DE", shape:"tube",
+    why:{en:"Low pH (5.5) cleans without stripping. Good for combination skin that gets tight after washing.", ja:"弱酸性（pH5.5）で、洗いすぎません。洗顔後につっぱる混合肌に。"}},
+  cleanserRice:{brand:"Hanbit", name:"Rice Foam Cleanser", ko:"한빛 쌀 폼 클렌저", price:9800, aisle:"B2", color:"#F1EBDD", shape:"tube",
+    why:{en:"Gentle foam with rice extract, inside your budget. Fragrance-free.", ja:"米エキス入りのやさしい泡。予算内で無香料。"}},
+  tonerCica:{brand:"Moa", name:"Cica Calming Toner", ko:"모아 시카 진정 토너", price:18000, aisle:"B4", color:"#9FCDB9", shape:"bottle",
+    why:{en:"Centella and madecassoside calm the redness we saw on your cheeks.", ja:"ツボクサとマデカソシドが、頬の赤みを落ち着かせます。"}},
+  tonerBHA:{brand:"Dalbit", name:"BHA Clear Toner", ko:"달빛 BHA 클리어 토너", price:16500, aisle:"B4", color:"#BFD3EA", shape:"bottle",
+    why:{en:"0.5% BHA clears pores in the T-zone. Low strength, so start every other day.", ja:"0.5%のBHAでTゾーンの毛穴をケア。低濃度なので1日おきから。"}},
+  tonerHydra:{brand:"Ondo", name:"Hydrating Toner", ko:"온도 수분 토너", price:15000, aisle:"B4", color:"#D9E6F2", shape:"bottle",
+    why:{en:"Five types of hyaluronic acid for the dryness on your cheeks.", ja:"5種のヒアルロン酸で、頬の乾燥をケア。"}},
+  serumNia:{brand:"Hanbit", name:"Niacinamide 5% Serum", ko:"한빛 나이아신아마이드 5% 세럼", price:21000, aisle:"C1", color:"#F4DFC8", shape:"dropper",
+    why:{en:"Niacinamide helps with oil, visible pores and dullness. 5% is well tolerated.", ja:"ナイアシンアミドが皮脂・毛穴・くすみに。5%は刺激が少ない濃度。"}},
+  serumPanth:{brand:"Moa", name:"Panthenol Barrier Ampoule", ko:"모아 판테놀 장벽 앰플", price:24000, aisle:"C1", color:"#EBD3DC", shape:"dropper",
+    why:{en:"Panthenol repairs the skin barrier. Chosen because new products often sting for you.", ja:"パンテノールが肌のバリアを修復。新しい商品でヒリヒリしやすいため。"}},
+  creamGel:{brand:"Soonsoo", name:"Water Gel Cream", ko:"순수 수분 젤 크림", price:19000, aisle:"C3", color:"#D4ECEA", shape:"jar",
+    why:{en:"Light gel texture that won't feel heavy on an oily T-zone.", ja:"軽いジェル。テカりやすいTゾーンでも重くなりません。"}},
+  creamCer:{brand:"Ondo", name:"Ceramide Cream", ko:"온도 세라마이드 크림", price:23000, aisle:"C3", color:"#EFE6DA", shape:"jar",
+    why:{en:"Ceramides lock in moisture for dry, sensitive skin.", ja:"セラミドが乾燥・敏感肌のうるおいを守ります。"}},
+  sun:{brand:"Dalbit", name:"Mild Sun Fluid SPF50+ PA++++", ko:"달빛 마일드 선 플루이드", price:17000, aisle:"A1", color:"#F6E9B8", shape:"tube", ad:true,
+    why:{en:"Mineral filters, no white cast, fine under makeup.", ja:"ミネラルフィルター。白浮きせず、メイク下地にも。"}},
+};
+const fmtKRW = n => "₩" + n.toLocaleString("en-US");
+const approx = n => S.lang==="ja" ? "≈ ¥" + Math.round(n*0.11/10)*10 : "≈ $" + Math.round(n/1400);
+
+function bottleSVG(p){
+  const c=p.color, ink="#17202D";
+  const shapes={
+    tube:`<rect x="12" y="4" width="20" height="8" rx="2" fill="${ink}" opacity=".85"/><path d="M8 12h28l-3 44H11z" fill="${c}" stroke="${ink}" stroke-opacity=".15"/>`,
+    bottle:`<rect x="16" y="2" width="12" height="10" rx="2" fill="${ink}" opacity=".85"/><rect x="8" y="12" width="28" height="44" rx="7" fill="${c}" stroke="${ink}" stroke-opacity=".15"/>`,
+    dropper:`<circle cx="22" cy="6" r="5" fill="${ink}" opacity=".85"/><rect x="18" y="9" width="8" height="8" fill="${ink}" opacity=".7"/><rect x="10" y="17" width="24" height="39" rx="6" fill="${c}" stroke="${ink}" stroke-opacity=".15"/>`,
+    jar:`<rect x="6" y="22" width="32" height="8" rx="2" fill="${ink}" opacity=".85"/><rect x="5" y="30" width="34" height="26" rx="6" fill="${c}" stroke="${ink}" stroke-opacity=".15"/>`
+  };
+  return `<svg class="bottle" viewBox="0 0 44 58" aria-hidden="true">${shapes[p.shape]}<rect x="14" y="36" width="16" height="3" rx="1.5" fill="${ink}" opacity=".2"/></svg>`;
+}
+
+/* ============ state ============ */
+const fresh = () => ({lang:S0lang(), screen:"welcome", consent:{photo:true,improve:true,ads:true}, photo:"idle", q:0,
+  answers:{feel:null,concerns:[],sens:null,budget:null,steps:null}, tab:"am", open:null, scan:"idle", chat:[], checkin:"lock", feeling:null});
+function S0lang(){ return (typeof S!=="undefined" && S.lang) || "en"; }
+let S = {lang:"en"}; S = fresh();
+let timers=[];
+const later=(fn,ms)=>{const id=setTimeout(fn,ms);timers.push(id);return id};
+const clearTimers=()=>{timers.forEach(clearTimeout);timers=[]};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ============ derived profile + routine ============ */
+function profile(){
+  const a=S.answers, tags=[];
+  const type={a:"Oily",b:"Combination",c:"Dry",d:"Normal"}[a.feel] || "Combination";
+  const typeJa={Oily:"脂性肌",Combination:"混合肌",Dry:"乾燥肌",Normal:"普通肌"}[type];
+  const sens = a.sens==="a" || a.sens==="b";
+  const main = S.lang==="ja" ? typeJa + (sens?"・敏感寄り":"") : type + (sens?", sensitive-leaning":"");
+  (a.concerns.length?a.concerns:["redness","pores"]).forEach(c=>tags.push(T[S.lang].concerns[c]));
+  if(S.photo==="done") tags.push(S.lang==="ja"?"写真あり":"Photo-checked");
+  return {type, sens, main, tags};
+}
+function routine(){
+  const a=S.answers, pr=profile(), c=a.concerns.length?a.concerns:["redness","pores"];
+  const low = a.budget==="a", five = a.steps!=="a";
+  const cleanser = low? P.cleanserRice : P.cleanserGel;
+  const toner = c.includes("redness")||pr.sens ? P.tonerCica : c.includes("acne")||c.includes("pores") ? P.tonerBHA : P.tonerHydra;
+  const serum = pr.sens||c.includes("dryness") ? P.serumPanth : P.serumNia;
+  const cream = pr.type==="Dry"||(pr.sens&&pr.type!=="Oily") ? P.creamCer : P.creamGel;
+  let am, pm;
+  if(five){ am=[cleanser,toner,serum,cream,P.sun]; pm=[cleanser,toner,(pr.sens?P.serumPanth:P.serumNia),cream]; }
+  else { am=[cleanser,cream,P.sun]; pm=[cleanser,toner,cream]; }
+  if(S.checkinSwap){ const sw=x=>x===P.tonerCica||x===P.tonerBHA?P.tonerHydra:x; am=am.map(sw); pm=pm.map(sw); }
+  if(!S.consent.ads){ am=am.map(x=>x.ad?{...x,ad:false,brand:"Ondo",name:"Daily Sun Cream SPF50+",ko:"온도 데일리 선크림",price:15500}:x); }
+  const uniq=[...new Set([...am,...pm])];
+  return {am, pm, total: uniq.reduce((s,p)=>s+p.price,0)};
+}
+
+/* ============ rendering ============ */
+const MAIN = ["routine","scan","chat","me"];
+function render(focus){
+  clearTimers();
+  document.documentElement.lang = S.lang;
+  renderTop(); renderNav();
+  const scr=$("screen"); scr.scrollTop=0;
+  $("composerSlot").innerHTML="";
+  scr.innerHTML = (screens[S.screen]||screens.welcome)();
+  (after[S.screen]||(()=>{}))();
+  if(focus) scr.focus({preventScroll:true});
+  post({type:"pibu:screen",screen:S.screen});
+}
+function go(s){ S.screen=s; S.open=null; render(true); }
+
+function renderTop(){
+  const showLang = S.screen==="welcome" || MAIN.includes(S.screen);
+  $("top").innerHTML = `<button class="logo" id="logo" aria-label="Pibu home">pibu<small>피부</small></button>
+    ${showLang?`<button class="lang-btn" data-act="toggleLang" aria-label="Change language">${S.lang==="en"?"EN":"日本語"}</button>`
+      : S.screen!=="analyzing" ? `<button class="lang-btn" data-act="back">${S.lang==="ja"?"戻る":"Back"}</button>`:""}`;
+  let taps=0, tt; $("logo").onclick=()=>{ taps++; clearTimeout(tt); tt=setTimeout(()=>taps=0,500); if(taps>=3){taps=0;toggleDemo();} };
+}
+const icons={
+  routine:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="7" y="3" width="10" height="18" rx="3"/><path d="M7 9h10"/></svg>',
+  scan:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16"/></svg>',
+  chat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16v11H9l-5 4z"/></svg>',
+  me:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>'
+};
+function renderNav(){
+  const nav=$("nav");
+  if(!MAIN.includes(S.screen) && S.screen!=="checkin"){ nav.style.display="none"; return; }
+  nav.style.display="flex";
+  nav.innerHTML = MAIN.map(k=>`<button data-go="${k}" ${S.screen===k?'aria-current="page"':""}>${icons[k]}<span>${T[S.lang].tabs[k]}</span></button>`).join("");
+}
+
+const screens = {
+welcome(){
+  return `<div class="hero-art"><canvas id="shelf" aria-hidden="true"></canvas></div>
+  <div class="stack" style="gap:14px">
+    <h1>${t("welcomeTitle")}</h1>
+    <p class="muted">${t("welcomeBody")}</p>
+    <div class="stack" style="gap:8px;margin-top:4px">
+      <span class="small muted">${t("chooseLang")}</span>
+      <div class="langs">
+        <button class="chip" data-lang="en" aria-pressed="${S.lang==="en"}">English</button>
+        <button class="chip" data-lang="ja" aria-pressed="${S.lang==="ja"}">日本語</button>
+        <button class="chip off" data-act="demoOnly">中文</button>
+        <button class="chip off" data-act="demoOnly">Español</button>
+        <button class="chip off" data-act="demoOnly">${t("more")}</button>
+      </div>
+    </div>
+    <button class="btn green" data-go="consent" style="margin-top:8px">${t("start")}</button>
+  </div>`;
+},
+consent(){
+  const sw=(k,l,s)=>`<div class="consent-row"><div class="spacer"><b>${l}</b><p class="small muted">${s}</p></div>
+    <button class="switch" role="switch" aria-checked="${S.consent[k]}" data-consent="${k}" aria-label="${esc(l)}"></button></div>`;
+  return `<div class="stack" style="gap:16px">
+    <h2>${t("consentTitle")}</h2>
+    <p class="muted">${t("consentBody")}</p>
+    <div class="card" style="padding:4px 16px">${sw("photo",t("c1"),t("c1s"))}${sw("improve",t("c2"),t("c2s"))}${sw("ads",t("c3"),t("c3s"))}</div>
+    <div class="notice"><span aria-hidden="true">ⓘ</span><span>${t("aiNotice")}</span></div>
+    <button class="btn green" data-act="consentNext">${t("continue")}</button>
+    <button class="btn text" data-act="skipPhoto">${t("skipPhoto")}</button>
+  </div>`;
+},
+photo(){
+  const st=S.photo;
+  const face=`<svg class="face" viewBox="0 0 300 324" aria-hidden="true">
+      <defs><radialGradient id="sk" cx="50%" cy="42%" r="60%"><stop offset="0" stop-color="#F3D9C6"/><stop offset="1" stop-color="#E2BFA6"/></radialGradient></defs>
+      <path d="M60 324c8-52 46-78 90-78s82 26 90 78z" fill="#C9D7D1"/>
+      <rect x="128" y="214" width="44" height="44" fill="#E2BFA6"/>
+      <ellipse cx="150" cy="148" rx="82" ry="102" fill="url(#sk)"/>
+      <path d="M66 140c-6-70 40-106 86-106s92 34 84 106c-10-36-34-60-84-62-50 2-76 26-86 62z" fill="#2A2522"/>
+      <ellipse cx="118" cy="150" rx="7" ry="4" fill="#3A302B"/><ellipse cx="182" cy="150" rx="7" ry="4" fill="#3A302B"/>
+      <path d="M104 134q14-8 28 0M168 134q14-8 28 0" stroke="#3A302B" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M150 158v26q-6 4-10 2" stroke="#C99D84" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M130 208q20 12 40 0" stroke="#B9776A" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <ellipse cx="106" cy="186" rx="20" ry="12" fill="#E79C93" opacity=".35"/><ellipse cx="194" cy="186" rx="20" ry="12" fill="#E79C93" opacity=".35"/>
+    </svg>`;
+  let dots="";
+  if(st==="scanning"){
+    const pts=[]; for(let i=0;i<46;i++){ const a=i*2.399, r=Math.sqrt(i/46)*86; pts.push([150+Math.cos(a)*r*.85,150+Math.sin(a)*r*1.05]); }
+    dots=`<svg class="dots" viewBox="0 0 300 324" aria-hidden="true">${pts.map((p,i)=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.2" fill="#fff" style="animation-delay:${(i*35)}ms"/>`).join("")}</svg><div class="scanline"></div>`;
+  }
+  let zones="";
+  if(st==="done"){
+    zones=`<div class="zone" style="left:41%;top:24%;width:18%;height:30%;animation-delay:.1s"></div>
+      <div class="zone-label" style="left:52%;top:20%;animation-delay:.25s">${t("oil")}</div>
+      <div class="zone" style="left:22%;top:50%;width:18%;height:12%;animation-delay:.4s"></div>
+      <div class="zone" style="left:60%;top:50%;width:18%;height:12%;animation-delay:.5s"></div>
+      <div class="zone-label" style="left:8%;top:64%;animation-delay:.65s">${t("redness")}</div>`;
+  }
+  const head = st==="blurry" ? `<div class="verdict warn"><b>${t("tooDark")}</b><span class="small">${t("tooDarkSub")}</span></div>`
+    : `<h2>${t("photoTitle")}</h2><p class="muted">${st==="scanning"?t("reading"):t("photoBody")}</p>`;
+  const results = st==="done" ? `<div class="card stack" style="gap:10px"><b>${t("photoDone")}</b>
+      <div class="result-list">
+        ${[[t("oil"),72],[t("redness"),48],[t("hydration"),40],[t("pores"),35]].map(([l,v])=>`<div class="result-item"><span>${l}</span><span class="meter"><i style="width:${v}%"></i></span></div>`).join("")}
+      </div>
+      <span class="tag green" style="align-self:flex-start">✓ ${t("photoDeleted")}</span></div>
+      <button class="btn green" data-act="toQuiz">${t("next")}</button>` : "";
+  const actions = st==="idle" ? `<button class="btn green" data-act="demoPhoto">${t("useDemo")}</button><button class="btn ghost" data-act="blurryPhoto">${t("useBlurry")}</button>`
+    : st==="blurry" ? `<button class="btn green" data-act="demoPhoto">${t("retake")}</button>` : "";
+  return `<div class="stack" style="gap:14px">${head}
+    <div class="face-wrap ${st==="blurry"?"blurry":""}">${face}${dots}${zones}</div>
+    ${actions}${results}</div>`;
+},
+quiz(){
+  const a=S.answers, q=S.q, n=5;
+  const prog=`<div class="progress" aria-label="${t("q")} ${q+1} ${t("of")} ${n}">${Array.from({length:n},(_,i)=>`<i class="${i<=q?"on":""}"></i>`).join("")}</div>`;
+  const opt=(key,val,label,sub,em)=>`<button class="option" data-ans="${key}" data-val="${val}" aria-pressed="${key==="concerns"?a.concerns.includes(val):a[key]===val}">
+      ${em?`<span class="em" aria-hidden="true">${em}</span>`:""}<span><b>${label}</b>${sub?`<span class="sub">${sub}</span>`:""}</span></button>`;
+  let body="";
+  if(q===0) body=`<h2>${t("q1")}</h2><div class="options">${opt("feel","a",t("q1a"),"","✦")}${opt("feel","b",t("q1b"),"","◐")}${opt("feel","c",t("q1c"),"","◌")}${opt("feel","d",t("q1d"),"","○")}</div>`;
+  if(q===1) body=`<h2>${t("q2")}</h2><p class="muted small">${t("q2s")}</p><div class="langs">${Object.keys(T.en.concerns).map(c=>`<button class="chip" data-ans="concerns" data-val="${c}" aria-pressed="${a.concerns.includes(c)}">${T[S.lang].concerns[c]}</button>`).join("")}</div>`;
+  if(q===2) body=`<h2>${t("q3")}</h2><div class="options">${opt("sens","a",t("q3a"))}${opt("sens","b",t("q3b"))}${opt("sens","c",t("q3c"))}</div>`;
+  if(q===3) body=`<h2>${t("q4")}</h2><div class="options">${opt("budget","a",t("q4a"),"","₩")}${opt("budget","b",t("q4b"),"","₩₩")}${opt("budget","c",t("q4c"),"","₩₩₩")}</div>`;
+  if(q===4) body=`<h2>${t("q5")}</h2><div class="options">${opt("steps","a",t("q5a"),t("q5as"))}${opt("steps","b",t("q5b"),t("q5bs"))}</div>`;
+  const keys=["feel","concerns","sens","budget","steps"], k=keys[q];
+  const ready = k==="concerns" ? a.concerns.length>0 : !!a[k];
+  return `<div class="stack" style="gap:14px"><span class="small muted">${t("q")} ${q+1} ${t("of")} ${n}</span>${prog.replace('class="progress"','class="progress" style="margin:-6px 0 4px"')}
+    ${body}
+    <button class="btn green" data-act="quizNext" ${ready?"":"disabled"}>${q===4?t("seeRoutine"):t("next")}</button>
+    ${q===0?`<button class="btn text" data-act="demoAnswers">${t("demoAnswers")}</button>`:""}</div>`;
+},
+analyzing(){
+  return `<div class="analyzing"><div class="orbit" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="steps-log" id="log" aria-live="polite"></div></div>`;
+},
+routine(){
+  const r=routine(), pr=profile(), list=S.tab==="am"?r.am:r.pm;
+  const items=list.map((p,i)=>{
+    const id=S.tab+i, open=S.open===id;
+    return `<div class="step"><span class="step-num">${i+1}</span><div class="card product">
+      <div class="product-top">${bottleSVG(p)}<div class="spacer">
+        <div class="row" style="gap:6px;flex-wrap:wrap"><span class="small muted">${p.brand}</span>${p.ad?`<span class="tag ad">Ad</span>`:""}</div>
+        <div class="pname">${p.name}</div><div class="pmeta">${p.ko}</div></div>
+        <div style="text-align:right"><div class="price">${fmtKRW(p.price)}</div><div class="pmeta">${approx(p.price)}</div></div></div>
+      <div class="row"><button class="why" data-why="${id}" aria-expanded="${open}">${open?t("hide"):t("whyThis")}</button><span class="spacer"></span><span class="aisle">${t("aisle")} ${p.aisle}</span></div>
+      ${open?`<div class="why-box"><span>${p.why[S.lang]||p.why.en}</span>${p.ad?`<span class="muted">${t("adWhy")}</span>`:""}<span class="muted small">${t("source")}</span></div>`:""}
+    </div></div>`;}).join("");
+  return `<div class="stack" style="gap:14px">
+    <div class="profile-card"><span class="small" style="opacity:.7">${t("yourSkin")}</span><b style="font-family:var(--display);font-size:22px">${pr.main}</b>
+      <div class="tags">${pr.tags.map(x=>`<span class="tag">${x}</span>`).join("")}</div></div>
+    ${S.checkinSwap?`<div class="verdict ok"><b>${t("swapped")}</b><span class="small">${t("swappedBody")}</span></div>`:""}
+    <div class="tabs" role="tablist"><button role="tab" data-tab="am" aria-selected="${S.tab==="am"}">☀ ${t("morning")}</button><button role="tab" data-tab="pm" aria-selected="${S.tab==="pm"}">☾ ${t("evening")}</button></div>
+    <div class="stack" style="gap:10px">${items}</div>
+    <div class="total"><span>${t("total")}</span><span class="price">${fmtKRW(r.total)} <span style="font-weight:500;opacity:.75">${approx(r.total)}</span></span></div>
+    <button class="btn" data-act="save">${t("save")}</button></div>`;
+},
+scan(){
+  const st=S.scan, sens=profile().sens;
+  const label=`<div class="label-card">
+      <div class="small" style="color:#8A8273">모아 · MOA</div>
+      <div class="kname">시카 진정 토너 200ml</div>
+      <div class="ing" style="margin-top:8px"><b>[전성분]</b> 정제수, 병풀추출물(70%), 부틸렌글라이콜, 나이아신아마이드, 판테놀, 마데카소사이드, 글리세린, 향료</div>
+      <div class="ing" style="margin-top:6px"><b>[사용법]</b> 세안 후 적당량을 덜어 피부결을 따라 가볍게 두드려 흡수시킵니다.</div>
+      ${st==="scanning"?'<div class="scanline"></div>':""}
+    </div>`;
+  if(st!=="done") return `<div class="stack" style="gap:14px"><h2>${t("scanTitle")}</h2><p class="muted">${st==="scanning"?t("scanning"):t("scanBody")}</p>${label}
+      ${st==="idle"?`<button class="btn green" data-act="scan">${t("scanBtn")}</button>`:""}</div>`;
+  const ja=S.lang==="ja";
+  const rows=[
+    ["ok",ja?"ツボクサエキス（70%）":"Centella asiatica extract (70%)","병풀추출물",ja?"赤みを鎮める":"Calms redness"],
+    ["neutral",ja?"精製水":"Water","정제수",ja?"ベース":"Base"],
+    ["neutral",ja?"BG（ブチレングリコール）":"Butylene glycol","부틸렌글라이콜",ja?"保湿のベース":"Hydrating base"],
+    ["ok",ja?"ナイアシンアミド":"Niacinamide","나이아신아마이드",ja?"毛穴・くすみ":"Pores and dullness"],
+    ["ok",ja?"パンテノール":"Panthenol","판테놀",ja?"バリアを修復":"Repairs barrier"],
+    ["ok",ja?"マデカソシド":"Madecassoside","마데카소사이드",ja?"鎮静":"Calming"],
+    ["neutral",ja?"グリセリン":"Glycerin","글리세린",ja?"保湿":"Moisture"],
+    [sens?"warn":"neutral",ja?"香料":"Fragrance","향료",sens?(ja?"敏感肌は刺激になることも":"Can irritate sensitive skin"):(ja?"香り付け":"Scent")]
+  ];
+  return `<div class="stack" style="gap:14px">
+    <div class="row"><h2 class="spacer">${t("ingTitle")}</h2><span class="tag ai">AI</span></div>
+    <div class="card"><div class="small muted">Moa · ${ja?"シカ カーミング トナー":"Cica Calming Toner"} · 200 ml</div>
+      <div class="ing-list" style="margin-top:6px">${rows.map((r,i)=>`<div class="ing-row" style="animation-delay:${i*80}ms"><span class="mark ${r[0]}">${r[0]==="ok"?"✓":r[0]==="warn"?"!":"·"}</span><div class="spacer"><b>${r[1]}</b><div class="ko">${r[2]}</div></div><span class="small muted" style="text-align:right;max-width:40%">${r[3]}</span></div>`).join("")}</div></div>
+    <div class="card small"><b>${ja?"使い方":"How to use"}</b><p class="muted">${ja?"洗顔後、適量を手に取り、肌になじませるように軽くたたき込みます。":"After cleansing, pat a small amount gently into the skin."}</p></div>
+    <div class="verdict ${sens?"warn":"ok"}"><b>${sens?(ja?"ほぼ合っています。香料に注意":"Mostly a good match. Watch the fragrance."):(ja?"あなたの肌に合っています":"Good match for your skin")}</b>
+      <span class="small">${sens?(ja?"ヒリヒリしやすいとのことなので、耳の後ろで24時間パッチテストをしてください。":"You said new products often sting, so patch-test behind your ear for 24 hours first."):(ja?"赤みと毛穴の悩みに合う成分です。":"Ingredients target your redness and pores.")}</span></div>
+    <button class="btn green" data-go="routine">${t("addRoutine")}</button>
+    <button class="btn text" data-act="rescan">${t("rescan")}</button></div>`;
+},
+chat(){
+  if(!S.chat.length) S.chat=[{who:"ai",text:t("chatHello")}];
+  return `<div class="stack" style="gap:12px"><h2>${t("chatTitle")}</h2>
+    <div class="chat" id="chatlog">${S.chat.map(msgHTML).join("")}</div></div>`;
+},
+checkin(){
+  if(S.checkin==="lock") return `<div class="stack" style="gap:14px"><h2>${t("checkTitle")}</h2>
+    <div class="lock"><span class="small" style="opacity:.75">${S.lang==="ja"?"12月2日 火曜日":"Tuesday, 2 December"}</span><span class="clock">8:12</span>
+      <button class="notif" data-act="openCheckin"><span class="app-icon">p</span><span class="spacer"><span class="row small"><b>pibu</b><span class="spacer"></span><span class="muted">${t("now")}</span></span><span style="font-size:14px">${t("checkNotif")}</span></span></button></div></div>`;
+  if(S.checkin==="ask") return `<div class="stack" style="gap:16px"><h2>${t("checkQ")}</h2>
+    <div class="faces">
+      <button class="option" data-feel="better" aria-pressed="${S.feeling==="better"}"><span style="font-size:28px">◡</span><b>${t("better")}</b></button>
+      <button class="option" data-feel="same" aria-pressed="${S.feeling==="same"}"><span style="font-size:28px">—</span><b>${t("same")}</b></button>
+      <button class="option" data-feel="worse" aria-pressed="${S.feeling==="worse"}"><span style="font-size:28px">◠</span><b>${t("worse")}</b></button>
+    </div>
+    <p class="small muted">${S.lang==="ja"?"任意：新しい写真を追加すると、変化を比べられます。":"Optional: add a new photo so we can compare."}</p>
+    <button class="btn green" data-act="submitCheckin" ${S.feeling?"":"disabled"}>${t("continue")}</button></div>`;
+  const worse=S.feeling==="worse";
+  return `<div class="stack" style="gap:16px"><h2>${t("checkDone")}</h2>
+    <div class="loop"><div>${t("checkLoop1")}</div><span aria-hidden="true">→</span><div>${t("checkLoop2")}</div><span aria-hidden="true">→</span><div class="hl">${t("checkLoop3")}</div></div>
+    <div class="verdict ${worse?"warn":"ok"}"><b>${t("swapped")}</b><span class="small">${worse?t("worseBody"):t("swappedBody")}</span></div>
+    <button class="btn green" data-act="seeUpdated">${S.lang==="ja"?"新しいルーティンを見る":"See updated routine"}</button></div>`;
+},
+me(){
+  const pr=profile();
+  return `<div class="stack" style="gap:16px"><h2>${t("meTitle")}</h2>
+    <div class="card"><span class="small muted">${t("meProfile")}</span><div style="font-family:var(--display);font-size:20px;font-weight:700">${pr.main}</div><div class="small muted">${pr.tags.join(", ")}</div></div>
+    <div class="card"><b>${t("mePrivacy")}</b><div class="list" style="margin-top:6px">
+      <div class="li"><span>${t("photoStatus")}</span><span class="tag green">✓ ${t("deleted")}</span></div>
+      <div class="li"><span>${t("dataUse")}</span><span class="small muted">${S.consent.improve?t("on"):t("off")}</span></div>
+      <div class="li"><button class="btn text" style="padding:0;color:var(--bad)" data-act="deleteAll">${t("deleteAll")}</button></div></div></div>
+    <div class="card small"><b>${t("meAds")}</b><p class="muted" style="margin-top:4px">${t("meAdsBody")}</p></div>
+    <button class="btn ghost" data-act="simulate">${t("simulate")}</button></div>`;
+}
+};
+
+function msgHTML(m){
+  if(m.who==="me") return `<div class="msg me">${esc(m.text)}</div>`;
+  if(m.typing) return `<div class="msg ai"><span class="typing" aria-label="typing"><i></i><i></i><i></i></span></div>`;
+  return `<div class="msg ai">${m.label!==false?`<span class="tag ai" style="align-self:flex-start">${t("aiLabel")}</span>`:""}<span>${m.text}</span>${m.src?`<span class="src">${m.src}</span>`:""}</div>`;
+}
+const QA = () => S.lang==="ja" ? [
+  {q:"この化粧水とレチノールは一緒に使える？", a:"使えますが、同じ夜には重ねないでください。シカ化粧水は朝と夜、レチノールは週2〜3回の夜だけにしましょう。ヒリヒリしやすい肌なので、まずは週1回から。", src:"出典：確認済み成分データベース（ツボクサ、レチノール）"},
+  {q:"日焼け止めはメイク下地にできる？", a:"はい。Dalbit マイルドサンフルイドは軽いテクスチャーで、1〜2分なじませてからファンデーションを塗れば崩れにくいです。", src:"出典：商品の技術資料 · 広告商品"},
+  {q:"₩30,000しかないなら何を先に買う？", a:"日焼け止め（₩17,000）とジェルクレンザー（₩13,000）でちょうど₩30,000です。赤みには、まず刺激を減らして紫外線を防ぐことがいちばん効きます。", src:"出典：あなたのルーティンと店頭価格"}
+] : [
+  {q:"Can I use this toner with retinol?", a:"Yes, but not in the same layer on the same night at first. Use the cica toner morning and evening, and retinol only 2–3 evenings a week. Your skin stings easily, so start with once a week.", src:"Source: checked ingredient database (centella, retinol)"},
+  {q:"Is the sunscreen OK under makeup?", a:"Yes. The Dalbit Mild Sun Fluid is light. Wait 1–2 minutes before foundation and it won't pill.", src:"Source: product technical sheet · this product is an Ad"},
+  {q:"I only have ₩30,000. What do I buy first?", a:"Sunscreen (₩17,000) and the gel cleanser (₩13,000), exactly ₩30,000. For redness, protecting from sun and washing gently help most.", src:"Source: your routine and store prices"}
+];
+function ask(text, qa){
+  S.chat.push({who:"me",text}); S.chat.push({who:"ai",typing:true}); refreshChat();
+  later(()=>{ S.chat.pop(); S.chat.push(qa?{who:"ai",text:qa.a,src:qa.src}:{who:"ai",text:t("fallback"),label:false}); refreshChat(); }, 1300);
+}
+function refreshChat(){ const l=$("chatlog"); if(!l) return; l.innerHTML=S.chat.map(msgHTML).join(""); renderSuggest(); const s=$("screen"); s.scrollTop=s.scrollHeight; }
+function renderSuggest(){
+  const slot=$("composerSlot"); if(S.screen!=="chat"){slot.innerHTML="";return;}
+  const asked=S.chat.filter(m=>m.who==="me").map(m=>m.text);
+  const left=QA().filter(x=>!asked.includes(x.q));
+  slot.innerHTML=`<div style="padding:0 16px">${left.length?`<div class="suggest">${left.map(x=>`<button class="chip" data-q="${esc(x.q)}">${esc(x.q)}</button>`).join("")}</div>`:""}</div>
+   <form class="composer" id="composer"><input id="chatIn" autocomplete="off" placeholder="${t("placeholder")}" aria-label="${t("placeholder")}"><button aria-label="Send"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></form>`;
+  $("composer").onsubmit=e=>{e.preventDefault(); const v=$("chatIn").value.trim(); if(!v) return; const m=QA().find(x=>x.q.toLowerCase()===v.toLowerCase()); ask(v,m);};
+}
+
+const after = {
+  welcome(){ drawShelf(); },
+  analyzing(){
+    const steps=[t("an1"),t("an2"),t("an3"),t("an4")];
+    steps.forEach((s,i)=>later(()=>{ const l=$("log"); if(l) l.insertAdjacentHTML("beforeend",`<div>✓ ${s}</div>`); }, 350+i*550));
+    later(()=>go("routine"), 350+steps.length*550+300);
+  },
+  photo(){ if(S.photo==="scanning") later(()=>{ S.photo=S.photoNext; render(); }, 2200); },
+  scan(){ if(S.scan==="scanning") later(()=>{ S.scan="done"; render(); }, 1500); },
+  chat(){ renderSuggest(); }
+};
+
+/* little illustrated shelf for the welcome screen */
+function drawShelf(){
+  const c=$("shelf"); if(!c) return; const r=c.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+  c.width=r.width*dpr; c.height=r.height*dpr; const g=c.getContext("2d"); g.scale(dpr,dpr);
+  const W=r.width,H=r.height, cols=["#9FCDB9","#F4DFC8","#D9E6F2","#EBD3DC","#F6E9B8","#CFE6DE","#BFD3EA","#EFE6DA","#F7D6DE"];
+  g.fillStyle="#E6ECE9"; g.fillRect(0,0,W,H);
+  let seed=7; const rnd=()=>{seed=(seed*16807)%2147483647; return seed/2147483647;};
+  const rows=3, rowH=H/rows;
+  for(let ry=0;ry<rows;ry++){
+    const base=(ry+1)*rowH-10; g.fillStyle="#C9D3CF"; g.fillRect(0,base,W,10);
+    let x=8; while(x<W){ const w=16+rnd()*16, h=rowH*(.45+rnd()*.4), col=cols[Math.floor(rnd()*cols.length)];
+      g.fillStyle=col; const rr=Math.min(6,w/3); g.beginPath(); g.roundRect?g.roundRect(x,base-h,w,h,[rr,rr,2,2]):g.rect(x,base-h,w,h); g.fill();
+      g.fillStyle="rgba(23,32,45,.78)"; g.fillRect(x+w*.3,base-h-6,w*.4,6);
+      g.fillStyle="rgba(23,32,45,.18)"; g.fillRect(x+3,base-h*.45,w-6,2.5);
+      x+=w+4; }
+  }
+  // the one product that is "yours"
+  const hx=W*.62, hy=rowH*2-10; g.strokeStyle="#1E7A62"; g.lineWidth=3; g.beginPath(); g.arc(hx,hy-rowH*.32,rowH*.42,0,Math.PI*2); g.stroke();
+  g.fillStyle="#1E7A62"; g.beginPath(); g.roundRect?g.roundRect(hx-44,hy-rowH*.32-rowH*.42-30,88,24,12):g.rect(hx-44,hy-rowH*.74-30,88,24); g.fill();
+  g.fillStyle="#fff"; g.font="600 12px 'IBM Plex Sans KR', sans-serif"; g.textAlign="center"; g.fillText(S.lang==="ja"?"あなたの一本":"Yours",hx,hy-rowH*.32-rowH*.42-13);
+}
+
+/* ============ events ============ */
+document.addEventListener("click", e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  const d=b.dataset;
+  if(d.go){ if(d.go==="routine" && !S.answers.feel) fillDemo(); go(d.go); return; }
+  if(d.lang){ S.lang=d.lang; render(); return; }
+  if(d.consent){ S.consent[d.consent]=!S.consent[d.consent]; b.setAttribute("aria-checked",S.consent[d.consent]); return; }
+  if(d.ans){ const k=d.ans,v=d.val; if(k==="concerns"){ const a=S.answers.concerns; const i=a.indexOf(v); if(i>=0)a.splice(i,1); else if(a.length<3)a.push(v); } else S.answers[k]=v; render(); return; }
+  if(d.tab){ S.tab=d.tab; S.open=null; render(); return; }
+  if(d.why){ S.open = S.open===d.why?null:d.why; const y=$("screen").scrollTop; render(); $("screen").scrollTop=y; return; }
+  if(d.q){ const qa=QA().find(x=>x.q===d.q); ask(d.q,qa); return; }
+  if(d.feel){ S.feeling=d.feel; render(); return; }
+  const act=d.act; if(!act) return;
+  ({
+    toggleLang(){ S.lang=S.lang==="en"?"ja":"en"; render(); },
+    demoOnly(){ toast(t("demoOnly")); },
+    back(){ const order=["welcome","consent","photo","quiz"]; if(S.screen==="quiz"&&S.q>0){S.q--;render();return;} if(S.screen==="checkin"){go("me");return;} const i=order.indexOf(S.screen); go(order[Math.max(0,i-1)]); },
+    consentNext(){ if(S.consent.photo){ S.photo="idle"; go("photo"); } else { S.q=0; go("quiz"); } },
+    skipPhoto(){ S.consent.photo=false; S.q=0; go("quiz"); },
+    demoPhoto(){ S.photo="scanning"; S.photoNext="done"; render(); },
+    blurryPhoto(){ S.photo="scanning"; S.photoNext="blurry"; render(); },
+    toQuiz(){ S.q=0; go("quiz"); },
+    quizNext(){ if(S.q<4){ S.q++; render(true); } else go("analyzing"); },
+    demoAnswers(){ fillDemo(); S.q=4; render(); },
+    save(){ toast(t("saved")); },
+    scan(){ S.scan="scanning"; render(); },
+    rescan(){ S.scan="idle"; render(); },
+    openCheckin(){ S.checkin="ask"; render(); },
+    submitCheckin(){ S.checkin="done"; render(); },
+    seeUpdated(){ S.checkinSwap=true; S.tab="am"; go("routine"); },
+    simulate(){ S.checkin="lock"; S.feeling=null; go("checkin"); },
+    deleteAll(){ const l=S.lang; S=fresh(); S.lang=l; render(); toast(t("deletedAll")); }
+  })[act]?.();
+});
+function fillDemo(){ S.answers={feel:"b",concerns:["redness","pores"],sens:"b",budget:"b",steps:"b"}; }
+function toast(msg){ const el=document.createElement("div"); el.className="toast"; el.setAttribute("role","status"); el.textContent=msg; $("app").appendChild(el); setTimeout(()=>el.remove(),2200); }
+
+/* ============ demo controls (triple-tap logo, key D, or messages from the slides) ============ */
+const JUMPS = {
+  welcome:()=>{ const l=S.lang; S=fresh(); S.lang=l; go("welcome"); },
+  consent:()=>go("consent"),
+  photo:()=>{ S.photo="idle"; go("photo"); },
+  quiz:()=>{ S.q=0; go("quiz"); },
+  routine:()=>{ if(!S.answers.feel) fillDemo(); if(S.photo!=="done") S.photo="done"; S.tab="am"; go("routine"); },
+  scan:()=>{ if(!S.answers.feel) fillDemo(); S.scan="idle"; go("scan"); },
+  chat:()=>{ if(!S.answers.feel) fillDemo(); go("chat"); },
+  checkin:()=>{ if(!S.answers.feel) fillDemo(); S.checkin="lock"; S.feeling=null; S.checkinSwap=false; go("checkin"); },
+  me:()=>{ if(!S.answers.feel) fillDemo(); go("me"); }
+};
+function toggleDemo(){
+  const p=$("demoPanel"); p.classList.toggle("open");
+  p.innerHTML=`<div class="row"><b class="spacer">Demo controls</b><button data-close style="width:auto">Close</button></div>
+    <div class="grid">${Object.keys(JUMPS).map((k,i)=>`<button data-jump="${k}">${i+1}. ${k}</button>`).join("")}</div>
+    <span class="small" style="opacity:.6">Keys 1–9 jump · R resets · L switches language</span>`;
+  p.onclick=e=>{ const b=e.target.closest("button"); if(!b) return; if(b.dataset.jump){ JUMPS[b.dataset.jump](); p.classList.remove("open"); } if("close" in b.dataset) p.classList.remove("open"); };
+}
+document.addEventListener("keydown", e=>{
+  if(e.target.tagName==="INPUT") return;
+  const keys=Object.keys(JUMPS), n=parseInt(e.key,10);
+  if(n>=1 && n<=keys.length){ JUMPS[keys[n-1]](); return; }
+  if(e.key==="d"||e.key==="D"){ toggleDemo(); return; }
+  if(e.key==="r"||e.key==="R"){ JUMPS.welcome(); return; }
+  if(e.key==="l"||e.key==="L"){ S.lang=S.lang==="en"?"ja":"en"; render(); return; }
+  if(["ArrowRight","ArrowLeft","PageDown","PageUp"," ","Escape","f","F","n","N"].includes(e.key)){ post({type:"pibu:key",key:e.key}); if(e.key===" ") e.preventDefault(); }
+});
+function post(msg){ try{ if(window.parent!==window) window.parent.postMessage(msg,"*"); }catch(_){} }
+window.addEventListener("message", e=>{
+  const m=e.data||{}; if(typeof m!=="object") return;
+  if(m.type==="pibu:framed") document.body.classList.add("framed");
+  if(m.type==="pibu:goto" && JUMPS[m.screen]) JUMPS[m.screen]();
+  if(m.type==="pibu:lang"){ S.lang=m.lang; render(); }
+  if(m.type==="pibu:ask" && S.screen==="chat"){ const qa=QA()[m.i||0]; if(qa) ask(qa.q,qa); }
+});
+if(/[?&]framed/.test(location.search)) document.body.classList.add("framed");
+window.addEventListener("resize",()=>{ if(S.screen==="welcome") drawShelf(); });
+
+render();
+})();
+</script>
+</body>
+</html>
