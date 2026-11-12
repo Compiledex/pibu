@@ -309,6 +309,8 @@ p{margin:0}
 .demo-panel.open{display:flex}
 .demo-panel .grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .demo-panel button{border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#fff;border-radius:12px;padding:8px;font-size:13px;text-align:left}
+.tag.new{background:#D8EDE2;color:#2F7A55;font-weight:700;margin-left:6px}
+.prow.swapped{box-shadow:0 0 0 2px #9BB8AC inset;background:#F3FAF6}
 </style>
 </head>
 <body>
@@ -901,9 +903,9 @@ analyzing(){
 },
 routine(){
   const r=routine(), pr=profile(), list=S.tab==="am"?r.am:r.pm;
-  const items=list.map((p,i)=>`<button class="prow" data-why="${S.tab}${i}" aria-label="${esc(p.name)}: ${t("whyThis")}">
+  const items=list.map((p,i)=>`<button class="prow${S.checkinSwap&&p===P.tonerHydra?" swapped":""}" data-why="${S.tab}${i}" aria-label="${esc(p.name)}: ${t("whyThis")}">
       <span class="num">${i+1}</span>${bottleSVG(p)}
-      <span class="txt"><span class="brand">${p.brand}${p.ad?`<span class="tag ad">Ad</span>`:""}</span><span class="nm">${p.name}</span><span class="ko">${p.ko}</span></span>
+      <span class="txt"><span class="brand">${p.brand}${p.ad?`<span class="tag ad">Ad</span>`:""}${S.checkinSwap&&p===P.tonerHydra?`<span class="tag new">${S.lang==="ja"?"3週間後に変更":"New after 3 weeks"}</span>`:""}</span><span class="nm">${p.name}</span><span class="ko">${p.ko}</span></span>
       <span class="rt"><b>${fmtKRW(p.price)}</b>${t("aisle")} ${p.aisle}</span><span class="chev" aria-hidden="true">›</span></button>`).join("");
   return `<div class="stack" style="gap:10px">
     <div class="profile-card compact"><b style="font-family:var(--display);font-size:19px;font-weight:500;letter-spacing:-.02em"><span style="opacity:.6;font-weight:400;font-size:13px;display:block;letter-spacing:0">${t("yourSkin")}</span>${pr.main}</b>
@@ -1143,6 +1145,26 @@ window.addEventListener("message", e=>{
   if(m.type==="pibu:ask" && S.screen==="chat"){ const qa=QA()[m.i||0]; if(qa) ask(qa.q,qa); }
 });
 if(/[?&]framed/.test(location.search)) document.body.classList.add("framed");
+/* ---- mirroring between two copies of the app (presenter view + big screen) ---- */
+(function(){
+  let mirror=false, replaying=false, scT=null;
+  const pathOf=el=>{ const p=[]; while(el && el!==document.body && el.parentElement){ p.unshift([...el.parentElement.children].indexOf(el)); el=el.parentElement; } return p; };
+  const byPath=p=>{ let el=document.body; for(const i of p){ if(!el) return null; el=el.children[i]; } return el; };
+  const send=m=>{ if(mirror && !replaying) post(Object.assign({type:"pibu:mirror"},m)); };
+  document.addEventListener("click",e=>{ const t=e.target; if(t.tagName==="INPUT" && t.closest("label")) return; send({ev:"click",path:pathOf(t)}); },true);
+  document.addEventListener("input",e=>{ send({ev:"input",path:pathOf(e.target),value:e.target.value}); },true);
+  document.addEventListener("submit",e=>{ if(e.submitter) return; send({ev:"submit",path:pathOf(e.target)}); },true);
+  document.addEventListener("scroll",e=>{ const t=e.target===document?document.scrollingElement:e.target; if(scT) return; scT=setTimeout(()=>{ scT=null; send({ev:"scroll",path:pathOf(t),top:t.scrollTop}); },60); },true);
+  window.addEventListener("message",e=>{ const m=e.data||{};
+    if(m.type==="pibu:mirror-on") mirror=true;
+    if(m.type==="pibu:replay"){ const el=byPath(m.path||[]); if(!el) return; replaying=true;
+      try{ if(m.ev==="click") el.click();
+        else if(m.ev==="input"){ el.value=m.value; el.dispatchEvent(new Event("input",{bubbles:true})); }
+        else if(m.ev==="submit"){ el.requestSubmit?el.requestSubmit():el.submit(); }
+        else if(m.ev==="scroll"){ el.style.scrollBehavior="auto"; el.scrollTop=m.top; el.style.scrollBehavior=""; } }catch(_){}
+      setTimeout(()=>{ replaying=false; },0); }
+  });
+})();
 
 
 render();
